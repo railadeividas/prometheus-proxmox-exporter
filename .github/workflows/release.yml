@@ -1,0 +1,42 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Build binary
+        run: |
+          go build -ldflags "\
+          -X main.version=${{ github.ref_name }} \
+          -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+          -o prometheus-proxmox-exporter main.go
+
+      - name: Generate SHA256 checksum
+        run: sha256sum prometheus-proxmox-exporter > prometheus-proxmox-exporter.sha256
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          files: |
+            prometheus-proxmox-exporter
+            prometheus-proxmox-exporter.sha256
+          generate_release_notes: true
+          make_latest: true
